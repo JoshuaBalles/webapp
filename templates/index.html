@@ -25,11 +25,14 @@
         margin: 0 auto;
       }
       .btn {
-        display: inline-block;
+        display: block;
         padding: 10px 20px;
-        margin: 20px 10px;
+        margin: 20px auto;
         font-size: 18px;
         cursor: pointer;
+      }
+      .btn + .btn {
+        margin-top: 32px;
       }
     </style>
     <!-- Socket.IO Client Library -->
@@ -59,9 +62,8 @@
           videoFeed.style.height = resolution.height + "px";
         });
 
-        document.querySelector(".btn").addEventListener("click", function () {
-          socket.emit("start_video");
-        });
+        // Automatically start video stream when the page is loaded
+        socket.emit("start_video");
       });
     </script>
   </head>
@@ -70,7 +72,6 @@
       <h1 id="title">Livestock-Learner</h1>
       <!-- Video Feed Container -->
       <img id="video-feed" />
-      <button class="btn">Start</button>
       <button class="btn">Capture</button>
     </div>
   </body>
