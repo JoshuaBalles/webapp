@@ -39,12 +39,15 @@
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script type="text/javascript">
       document.addEventListener("DOMContentLoaded", function () {
+        // Connect to the Socket.IO server
         const socket = io.connect(
           location.protocol + "//" + document.domain + ":" + location.port
         );
         const videoFeed = document.getElementById("video-feed");
 
+        // Function to update the video feed with the received frame
         socket.on("video_frame", function (data) {
+          // Convert the received binary data to base64 image format
           const src =
             "data:image/jpeg;base64," +
             btoa(
@@ -53,10 +56,11 @@
                 ""
               )
             );
+          // Update the src attribute of the video feed element
           videoFeed.src = src;
         });
 
-        // Listen for resolution information from the server
+        // Listen for resolution information from the server and adjust video feed size
         socket.on("video_resolution", function (resolution) {
           videoFeed.style.width = resolution.width + "px";
           videoFeed.style.height = resolution.height + "px";
@@ -64,6 +68,11 @@
 
         // Automatically start video stream when the page is loaded
         socket.emit("start_video");
+
+        // Listen for capture button click and emit capture_image event
+        document.querySelector(".btn").addEventListener("click", function () {
+          socket.emit("capture_image");
+        });
       });
     </script>
   </head>
@@ -72,6 +81,7 @@
       <h1 id="title">Livestock-Learner</h1>
       <!-- Video Feed Container -->
       <img id="video-feed" />
+      <!-- Button to capture image -->
       <button class="btn">Capture</button>
     </div>
   </body>
