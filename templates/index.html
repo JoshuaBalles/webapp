@@ -21,7 +21,7 @@
         width: 800px;
         height: 480px;
         border: 2px solid black;
-        background-color: white;
+        background-color: #000;
         margin: 0 auto;
       }
       .btn {
@@ -32,11 +32,44 @@
         cursor: pointer;
       }
     </style>
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script type="text/javascript">
+      document.addEventListener("DOMContentLoaded", function () {
+        const socket = io.connect(
+          location.protocol + "//" + document.domain + ":" + location.port
+        );
+        const videoFeed = document.getElementById("video-feed");
+
+        socket.on("video_frame", function (data) {
+          const src =
+            "data:image/jpeg;base64," +
+            btoa(
+              new Uint8Array(data).reduce(
+                (data, byte) => data + String.fromCharCode(byte),
+                ""
+              )
+            );
+          videoFeed.src = src;
+        });
+
+        // Listen for resolution information from the server
+        socket.on("video_resolution", function (resolution) {
+          videoFeed.style.width = resolution.width + "px";
+          videoFeed.style.height = resolution.height + "px";
+        });
+
+        document.querySelector(".btn").addEventListener("click", function () {
+          socket.emit("start_video");
+        });
+      });
+    </script>
   </head>
   <body>
     <div class="container">
       <h1 id="title">Livestock-Learner</h1>
-      <div id="video-feed"></div>
+      <!-- Video Feed Container -->
+      <img id="video-feed" />
       <button class="btn">Start</button>
       <button class="btn">Capture</button>
     </div>
