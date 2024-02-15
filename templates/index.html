@@ -1,53 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Character set for the document -->
     <meta charset="UTF-8" />
+    <!-- Viewport settings for responsive design -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Title of the webpage -->
     <title>Livestock-Learner</title>
+    <!-- Internal CSS for styling the webpage -->
     <style>
       body {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
+        font-family: Arial, sans-serif; /* Default font for the webpage */
       }
       .container {
-        text-align: center;
-        margin-top: 50px;
+        text-align: center; /* Center-aligns the content of the container */
+        margin-top: 50px; /* Adds a margin at the top for spacing */
       }
       #title {
-        font-size: 64px;
+        font-size: 64px; /* Sets the font size for the title */
       }
       #video-feed {
-        width: 640px;
-        height: 480px;
-        border: 2px solid black;
-        background-color: #000;
-        margin: 0 auto;
+        width: 640px; /* Default width for the video feed */
+        height: 480px; /* Default height for the video feed */
+        border: 2px solid black; /* Adds a black border around the video feed */
+        background-color: #000; /* Sets the background color of the video feed to black */
+        margin: 0 auto; /* Centers the video feed horizontally */
       }
       .btn {
-        display: block;
-        padding: 10px 20px;
-        margin: 20px auto;
-        font-size: 18px;
-        cursor: pointer;
+        display: block; /* Makes the button a block element */
+        padding: 10px 20px; /* Adds padding inside the button */
+        margin: 20px auto; /* Centers the button and adds margin for spacing */
+        font-size: 18px; /* Sets the font size for the text inside the button */
+        cursor: pointer; /* Changes the cursor to a pointer when hovering over the button */
       }
       .btn + .btn {
-        margin-top: 32px;
+        margin-top: 32px; /* Adds spacing between consecutive buttons */
       }
     </style>
-    <!-- Socket.IO Client Library -->
+    <!-- Including the Socket.IO Client Library -->
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script type="text/javascript">
       document.addEventListener("DOMContentLoaded", function () {
-        // Connect to the Socket.IO server
+        // Establishes a connection to the Socket.IO server
         const socket = io.connect(
           location.protocol + "//" + document.domain + ":" + location.port
         );
-        const videoFeed = document.getElementById("video-feed");
+        const videoFeed = document.getElementById("video-feed"); // Selects the video feed element
 
-        // Function to update the video feed with the received frame
+        // Updates the video feed when a new frame is received from the server
         socket.on("video_frame", function (data) {
-          // Convert the received binary data to base64 image format
+          // Converts the received binary data to a base64 encoded string
           const src =
             "data:image/jpeg;base64," +
             btoa(
@@ -56,20 +60,20 @@
                 ""
               )
             );
-          // Update the src attribute of the video feed element
+          // Sets the src attribute of the video feed element to the base64 encoded image
           videoFeed.src = src;
         });
 
-        // Listen for resolution information from the server and adjust video feed size
+        // Adjusts the size of the video feed based on the resolution information received from the server
         socket.on("video_resolution", function (resolution) {
           videoFeed.style.width = resolution.width + "px";
           videoFeed.style.height = resolution.height + "px";
         });
 
-        // Automatically start video stream when the page is loaded
+        // Automatically starts the video stream when the page loads
         socket.emit("start_video");
 
-        // Listen for capture button click and emit capture_image event
+        // Captures an image when the capture button is clicked
         document.querySelector(".btn").addEventListener("click", function () {
           socket.emit("capture_image");
         });
@@ -78,10 +82,11 @@
   </head>
   <body>
     <div class="container">
+      <!-- Page title -->
       <h1 id="title">Livestock-Learner</h1>
-      <!-- Video Feed Container -->
+      <!-- Container for the video feed, displayed as an image -->
       <img id="video-feed" />
-      <!-- Button to capture image -->
+      <!-- Button to trigger image capture -->
       <button class="btn">Capture</button>
     </div>
   </body>
