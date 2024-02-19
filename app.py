@@ -1,14 +1,6 @@
-from flask import (
-    Flask,
-    render_template,
-)  # Import Flask to create a web server and render_template to serve HTML files
-from flask_socketio import (
-    SocketIO,
-)  # Import SocketIO for real-time communication between the server and clients
-from threading import (
-    Thread,
-    Event,
-)  # Import Thread for parallel execution and Event for thread synchronization
+from flask import (Flask, render_template)  # Import Flask to create a web server and render_template to serve HTML files
+from flask_socketio import (SocketIO)  # Import SocketIO for real-time communication between the server and clients
+from threading import (Thread, Event)  # Import Thread for parallel execution and Event for thread synchronization
 from datetime import datetime  # Import datetime to generate timestamps
 from ultralytics import YOLO  # Import YOLO model from ultralytics for object detection
 import cv2  # Import OpenCV for image and video processing
@@ -18,9 +10,7 @@ app = Flask(__name__)  # Initialize a Flask application
 socketio = SocketIO(app)  # Wrap the Flask app with SocketIO for real-time capabilities
 
 stop_event = Event()  # Create an event to signal when to stop the video capture thread
-camera = (
-    None  # Initialize camera variable to None, to be set when the camera is initialized
-)
+camera = (None)  # Initialize camera variable to None, to be set when the camera is initialized
 
 
 # Function to initialize the camera
@@ -28,9 +18,6 @@ def init_camera():
     global camera  # Access the global camera variable
     if camera is None:  # Check if the camera has not been initialized
         camera = cv2.VideoCapture(0)  # Open the default camera
-        # Set the frame width and height to 640x480 for consistency
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 
 # Function to save the current frame and process it with YOLO
@@ -38,12 +25,10 @@ def save_current_frame(frame):
     if not os.path.exists("inputs"):  # Check if the 'inputs' directory doesn't exist
         os.makedirs("inputs")  # Create the 'inputs' directory
 
-    timestamp = datetime.now().strftime(
-        "%H-%M-%S-%d-%m-%Y"
-    )  # Generate a timestamp for the filename
+    timestamp = datetime.now().strftime("%H-%M-%S-%d-%m-%Y")  # Generate a timestamp for the filename
     filename = f"{timestamp}.jpg"  # Create a filename with the timestamp
     input_path = f"inputs/{filename}"  # Define the full path for the input image
-    cv2.imwrite(input_path, frame)  # Save the frame to the 'inputs' directory
+    cv2.imwrite(input_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])  # Save the frame to the 'inputs' directory with JPEG quality set to 100
 
     model = YOLO("best.pt")  # Initialize the YOLO model with the specified weights
     results = model(input_path)  # Perform object detection on the input image
@@ -55,9 +40,7 @@ def save_current_frame(frame):
     for r in results:
         im_array = r.plot()  # Generate an annotated image with the detection results
         output_path = f"outputs/{filename}"  # Define the full path for the output image
-        cv2.imwrite(
-            output_path, im_array
-        )  # Save the annotated image to the 'outputs' directory
+        cv2.imwrite(output_path, im_array)  # Save the annotated image to the 'outputs' directory
 
 
 latest_frame = None  # Variable to hold the most recent frame captured from the camera
@@ -71,9 +54,7 @@ def capture_frames():
     # Get the frame dimensions from the camera for the client's video resolution
     width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    socketio.emit(
-        "video_resolution", {"width": width, "height": height}
-    )  # Emit the video resolution to clients
+    socketio.emit("video_resolution", {"width": width, "height": height})  # Emit the video resolution to clients
 
     frame_skip = 2  # Number of frames to skip between captures to reduce load
 
@@ -82,26 +63,15 @@ def capture_frames():
             for _ in range(frame_skip):  # Skip the specified number of frames
                 camera.grab()
             success, frame = camera.read()  # Read the next frame from the camera
-            if (
-                not success
-            ):  # If the frame could not be read successfully, exit the loop
+            if (not success):  # If the frame could not be read successfully, exit the loop
                 break
 
             latest_frame = frame  # Update the latest_frame with the current frame
-            encode_param = [
-                int(cv2.IMWRITE_JPEG_QUALITY),
-                85,
-            ]  # Set JPEG quality for encoding the frame
-            _, buffer = cv2.imencode(
-                ".jpg", frame, encode_param
-            )  # Encode the frame as JPEG
-            socketio.emit(
-                "video_frame", buffer.tobytes()
-            )  # Emit the encoded frame to clients
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]  # Set JPEG quality for encoding the frame
+            _, buffer = cv2.imencode(".jpg", frame, encode_param)  # Encode the frame as JPEG
+            socketio.emit("video_frame", buffer.tobytes())  # Emit the encoded frame to clients
     except Exception as e:
-        print(
-            f"Error capturing video: {e}"
-        )  # Print any errors that occur during video capture
+        print(f"Error capturing video: {e}")  # Print any errors that occur during video capture
 
 
 # Function to start the video capture in a separate thread
