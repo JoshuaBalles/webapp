@@ -1,0 +1,61 @@
+/* General body styling */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f4f4; /* Light grey background for a modern look */
+}
+
+/* Styling for the main container element */
+.container {
+    text-align: center; /* This should center the contents */
+    display: flex; /* Using Flexbox for alignment */
+    flex-direction: column; /* Stack children vertically */
+    align-items: center; /* Center-align items horizontally in the container */
+    justify-content: center; /* Center-align items vertically in the container */
+}
+
+/* Styling for the page title */
+#title {
+    font-size: 3rem; /* Responsive font size */
+    color: #333; /* Dark grey color for better contrast */
+    margin-bottom: 1rem; /* Adds some space below the title */
+    text-shadow: 2px 2px 4px #aaa; /* Subtle shadow for a depth effect */
+}
+
+/* Styling for the video feed display element */
+#video-feed {
+    max-width: 90%; /* Responsive width */
+    height: auto; /* Maintain aspect ratio */
+    border: 3px solid #555; /* Darker border for contrast */
+    background-color: #000;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4); /* Adds a shadow for depth */
+    margin-bottom: 20px; /* Adds some space below the video feed */
+}
+
+/* Styling for the capture button */
+.btn {
+    display: inline-block; /* Allows for more control over styling */
+    padding: 10px 20px;
+    background-color: #5cb85c; /* Bootstrap 'success' green */
+    color: white; /* White text color */
+    font-size: 1rem;
+    cursor: pointer;
+    border: none; /* Removes default border */
+    border-radius: 5px; /* Rounded corners */
+    transition: background-color 0.3s; /* Transition for button interaction */
+    margin: 20px auto; /* Centers the button horizontally */
+}
+
+.btn:hover {
+    background-color: #4cae4c; /* Slightly darker green on hover */
+}
+
+/* Adding a footer for additional information or credits */
+footer {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+    color: #aaa;
+    font-size: 0.9rem;
+}
