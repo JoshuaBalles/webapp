@@ -1,116 +1,95 @@
-from flask import (Flask, render_template)  # Import Flask to create a web server and render_template to serve HTML files
-from flask_socketio import (SocketIO)  # Import SocketIO for real-time communication between the server and clients
-from threading import (Thread, Event)  # Import Thread for parallel execution and Event for thread synchronization
-from datetime import datetime  # Import datetime to generate timestamps
-from ultralytics import YOLO  # Import YOLO model from ultralytics for object detection
-import cv2  # Import OpenCV for image and video processing
-import os  # Import os for file and directory operations
+from flask import Flask, render_template
+from flask_socketio import SocketIO
+from threading import Thread, Event
+from datetime import datetime
+import cv2
+import os
+from ultralytics import YOLO  # Import YOLO for object detection
 
-app = Flask(__name__)  # Initialize a Flask application
-socketio = SocketIO(app)  # Wrap the Flask app with SocketIO for real-time capabilities
+app = Flask(__name__)
+socketio = SocketIO(app)  # Initialize Flask-SocketIO
 
-stop_event = Event()  # Create an event to signal when to stop the video capture thread
-camera = (None)  # Initialize camera variable to None, to be set when the camera is initialized
+stop_event = Event()  # Event to control the stop of the video capturing thread
+camera = None  # Global variable for the camera object
 
-
-# Function to initialize the camera
 def init_camera():
-    global camera  # Access the global camera variable
-    if camera is None:  # Check if the camera has not been initialized
-        camera = cv2.VideoCapture(0)  # Open the default camera
+    global camera
+    # Initialize the camera object only if it hasn't been initialized before
+    if camera is None:
+        camera = cv2.VideoCapture(0)  # 0 for the default camera
 
+def process_frame(frame):
+    # Load the YOLO model with pretrained weights
+    model = YOLO("best.pt")  
+    results = model(frame)  # Perform object detection on the frame
 
-# Function to save the current frame and process it with YOLO
-def save_current_frame(frame):
-    if not os.path.exists("inputs"):  # Check if the 'inputs' directory doesn't exist
-        os.makedirs("inputs")  # Create the 'inputs' directory
+    # Create 'outputs' directory if it doesn't exist to store output images
+    if not os.path.exists("outputs"):
+        os.makedirs("outputs")
 
-    timestamp = datetime.now().strftime("%H-%M-%S-%d-%m-%Y")  # Generate a timestamp for the filename
-    filename = f"{timestamp}.jpg"  # Create a filename with the timestamp
-    input_path = f"inputs/{filename}"  # Define the full path for the input image
-    cv2.imwrite(input_path, frame, [int(cv2.IMWRITE_JPEG_QUALITY), 100])  # Save the frame to the 'inputs' directory with JPEG quality set to 100
+    # Generate a unique filename with a timestamp
+    timestamp = datetime.now().strftime("%H-%M-%S-%d-%m-%Y")
+    filename = f"{timestamp}.jpg"
+    output_path = f"outputs/{filename}"
 
-    model = YOLO("best.pt")  # Initialize the YOLO model with the specified weights
-    results = model(input_path)  # Perform object detection on the input image
-
-    if not os.path.exists("outputs"):  # Check if the 'outputs' directory doesn't exist
-        os.makedirs("outputs")  # Create the 'outputs' directory
-
-    # Assuming the results contain multiple objects, iterate through them
+    # Process each detection result
     for r in results:
-        im_array = r.plot()  # Generate an annotated image with the detection results
-        output_path = f"outputs/{filename}"  # Define the full path for the output image
-        cv2.imwrite(output_path, im_array)  # Save the annotated image to the 'outputs' directory
+        # Plot detection results on the frame
+        im_array = r.plot()  
+        # Save the annotated frame as an image
+        cv2.imwrite(output_path, im_array)  
 
+latest_frame = None  # To store the most recent frame captured
 
-latest_frame = None  # Variable to hold the most recent frame captured from the camera
-
-
-# Function to capture frames from the camera and emit them to the clients
 def capture_frames():
-    global latest_frame  # Access the global latest_frame variable
-    init_camera()  # Initialize the camera
+    global latest_frame
+    init_camera()
 
-    # Get the frame dimensions from the camera for the client's video resolution
+    # Retrieve video frame width and height and emit to the client-side for appropriate display
     width = camera.get(cv2.CAP_PROP_FRAME_WIDTH)
     height = camera.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    socketio.emit("video_resolution", {"width": width, "height": height})  # Emit the video resolution to clients
+    socketio.emit("video_resolution", {"width": width, "height": height})
 
-    frame_skip = 2  # Number of frames to skip between captures to reduce load
+    frame_skip = 2  # Number of frames to skip between processing to reduce workload
 
     try:
-        while not stop_event.is_set():  # Loop until the stop event is signaled
-            for _ in range(frame_skip):  # Skip the specified number of frames
+        while not stop_event.is_set():  # Loop until the stop event is triggered
+            for _ in range(frame_skip):  # Skip specified number of frames
                 camera.grab()
-            success, frame = camera.read()  # Read the next frame from the camera
-            if (not success):  # If the frame could not be read successfully, exit the loop
-                break
+            success, frame = camera.read()
+            if not success:
+                break  # Exit loop if unable to read from camera
 
-            latest_frame = frame  # Update the latest_frame with the current frame
-            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]  # Set JPEG quality for encoding the frame
+            latest_frame = frame  # Update the global latest_frame
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]  # JPEG quality for the frame encoding
             _, buffer = cv2.imencode(".jpg", frame, encode_param)  # Encode the frame as JPEG
-            socketio.emit("video_frame", buffer.tobytes())  # Emit the encoded frame to clients
+            socketio.emit("video_frame", buffer.tobytes())  # Emit the encoded frame over SocketIO
     except Exception as e:
-        print(f"Error capturing video: {e}")  # Print any errors that occur during video capture
+        print(f"Error capturing video: {e}")  # Log any errors during video capture
 
-
-# Function to start the video capture in a separate thread
 def start_capture():
-    stop_event.clear()  # Clear the stop event in case it was set previously
-    Thread(
-        target=capture_frames
-    ).start()  # Start the capture_frames function in a new thread
+    stop_event.clear()  # Ensure the stop event is cleared before starting capture
+    Thread(target=capture_frames).start()  # Start the frame capture in a separate thread
 
-
-# Function to stop video capture and release the camera resource
 def stop_capture():
-    stop_event.set()  # Set the stop event to signal the capture_frames thread to stop
-    if camera is not None:  # If the camera has been initialized
+    stop_event.set()  # Set the stop event to stop the video capture loop
+    if camera is not None:
         camera.release()  # Release the camera resource
 
-
-# Flask route for the home page
 @app.route("/")
 def home():
-    return render_template("index.html")  # Serve the index.html file as the home page
+    # Render the main page template
+    return render_template("index.html")
 
-
-# SocketIO event handler to start video capture
 @socketio.on("start_video")
 def handle_start_video():
-    start_capture()  # Call the start_capture function
+    start_capture()  # Start video capture when a "start_video" event is received from the client
 
-
-# SocketIO event handler to capture a single image
 @socketio.on("capture_image")
 def handle_capture_image():
-    if latest_frame is not None:  # If there is a latest frame available
-        # Start the save_current_frame function in a new thread, passing the latest frame
-        Thread(target=save_current_frame, args=(latest_frame,)).start()
+    # Process the latest frame for object detection when "capture_image" event is received
+    if latest_frame is not None:
+        Thread(target=process_frame, args=(latest_frame,)).start()
 
-
-# Main entry point for the Flask application
 if __name__ == "__main__":
-    socketio.run(
-        app, host="0.0.0.0", debug=True
-    )  # Run the Flask app with SocketIO on host 0.0.0.0
+    socketio.run(app, host="0.0.0.0", debug=True)  # Start the Flask application with SocketIO support
