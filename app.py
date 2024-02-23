@@ -4,13 +4,15 @@ from threading import Thread, Event
 from datetime import datetime
 import cv2
 import os
-from ultralytics import YOLO  # Import YOLO for object detection
+from ultralytics import YOLO
 
 app = Flask(__name__)
 socketio = SocketIO(app)  # Initialize Flask-SocketIO
 
 stop_event = Event()  # Event to control the stop of the video capturing thread
 camera = None  # Global variable for the camera object
+latest_frame = None  # To store the most recent frame captured
+model = YOLO("best.pt")  # Load the YOLO model once
 
 def init_camera():
     global camera
@@ -18,14 +20,13 @@ def init_camera():
     if camera is None:
         camera = cv2.VideoCapture(0)  # 0 for the default camera
 
-def process_frame(frame):
-    # Load the YOLO model with pretrained weights
-    model = YOLO("best.pt")  
-    results = model(frame)  # Perform object detection on the frame
+# Create 'outputs' directory to store output images
+if not os.path.exists("outputs"):
+    os.makedirs("outputs")
 
-    # Create 'outputs' directory if it doesn't exist to store output images
-    if not os.path.exists("outputs"):
-        os.makedirs("outputs")
+def process_frame(frame):
+    global model
+    results = model(frame)  # Perform object detection on the frame
 
     # Generate a unique filename with a timestamp
     timestamp = datetime.now().strftime("%H-%M-%S-%d-%m-%Y")
@@ -35,11 +36,9 @@ def process_frame(frame):
     # Process each detection result
     for r in results:
         # Plot detection results on the frame
-        im_array = r.plot()  
+        im_array = r.plot()
         # Save the annotated frame as an image
-        cv2.imwrite(output_path, im_array)  
-
-latest_frame = None  # To store the most recent frame captured
+        cv2.imwrite(output_path, im_array)
 
 def capture_frames():
     global latest_frame
@@ -66,6 +65,9 @@ def capture_frames():
             socketio.emit("video_frame", buffer.tobytes())  # Emit the encoded frame over SocketIO
     except Exception as e:
         print(f"Error capturing video: {e}")  # Log any errors during video capture
+    finally:
+        if camera is not None:
+            camera.release()  # Ensure camera resource is released
 
 def start_capture():
     stop_event.clear()  # Ensure the stop event is cleared before starting capture
@@ -92,4 +94,4 @@ def handle_capture_image():
         Thread(target=process_frame, args=(latest_frame,)).start()
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", debug=True)  # Start the Flask application with SocketIO support
+    socketio.run(app, debug=True)  # Start the Flask-SocketIO server
